@@ -20,8 +20,8 @@ package org.jdrupes.taglets.plantUml;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -153,13 +153,23 @@ public class PlantUml implements Taglet {
         }
         SourceStringReader reader = new SourceStringReader(
                 Defines.createEmpty(), plantUmlSource, plantConfig());
-        try {
-            reader.outputImage(graphicsFile.openOutputStream(),
-                    new FileFormatOption(getFileFormat(fileName)));
+        try (OutputStream outputStream = graphicsFile.openOutputStream()){
+            reader.outputImage(outputStream, new FileFormatOption(getFileFormat(fileName)));
         } catch (IOException e) {
             throw new RuntimeException(
                     "Error generating UML image " + graphicsFile.getName() + ": "
                             + e.getLocalizedMessage());
+        }
+
+        try {
+            CharSequence graphicsFileCharContent = graphicsFile.getCharContent(true);
+            if(graphicsFileCharContent.length()<15000 && String.valueOf(graphicsFileCharContent).
+                    contains("\">Cannot open URL</text><!--SRC=[")){
+                throw new RuntimeException("PlantUML diagram generation error 'Cannot open URL'. " +
+                        "Please check file "+graphicsFile.toUri().getPath());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
         return "<img src=\""+ fileName +"\"> ";
     }
