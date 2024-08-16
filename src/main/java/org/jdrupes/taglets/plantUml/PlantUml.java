@@ -18,6 +18,7 @@
 
 package org.jdrupes.taglets.plantUml;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -105,11 +106,28 @@ public class PlantUml implements Taglet {
     private String processTag(DocTree tree, Element element) {
         String plantUmlSource = tree.toString();
         String[] splitSource = plantUmlSource.split("\\s", 2);
-        if (splitSource.length < 2) {
-            logger.log(Level.WARNING, "Invalid %0 tag. Content: %1",
-                    new Object[] { getName(), tree.toString() });
-            throw new IllegalArgumentException("Invalid " + getName()
-                    + " tag: Expected filename and PlantUML source");
+        String content;
+        if(element.getKind()==ElementKind.METHOD && (splitSource.length==1 || splitSource[1].isEmpty())){
+            String className = env.getElementUtils().getOutermostTypeElement(element).getQualifiedName().toString().replace(".","_");
+            String method = element.getSimpleName().toString();
+            String fullName= className+"_"+method+".sequence.uml";
+            File plantUmlDiaFile = new File(System.getProperty("sequence.uml.basepath", System.getProperty("user.dir")), fullName);
+            if(!plantUmlDiaFile.exists()){
+                throw new IllegalArgumentException("File not found: "+plantUmlDiaFile.getAbsolutePath());
+            }
+            try {
+                content = Files.readString(plantUmlDiaFile.toPath());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            if (splitSource.length < 2) {
+                logger.log(Level.WARNING, "Invalid %0 tag. Content: %1",
+                        new Object[] { getName(), tree.toString() });
+                throw new IllegalArgumentException("Invalid " + getName()
+                        + " tag: Expected filename and PlantUML source");
+            }
+            content = splitSource[1].trim();
         }
 
         String packageName = "";
@@ -133,7 +151,7 @@ public class PlantUml implements Taglet {
 
         // render
 
-        String content = splitSource[1].trim();
+
         if(urlMatcher.matcher(content).matches()){
             try (InputStream stream = new URI(content).toURL().openStream()){
                 if(stream==null){
