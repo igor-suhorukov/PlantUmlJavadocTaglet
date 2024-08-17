@@ -150,7 +150,9 @@ public class PlantUml implements Taglet {
         }
 
         // render
-
+        if(content==null || content.isEmpty()){
+            throw new IllegalArgumentException("taglet content: " + content);
+        }
 
         if(urlMatcher.matcher(content).matches()){
             try (InputStream stream = new URI(content).toURL().openStream()){
