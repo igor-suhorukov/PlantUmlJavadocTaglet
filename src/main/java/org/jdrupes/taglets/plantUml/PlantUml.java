@@ -81,7 +81,7 @@ public class PlantUml implements Taglet {
     @Override
     public Set<Location> getAllowedLocations() {
         return Set.of(Taglet.Location.OVERVIEW, Taglet.Location.PACKAGE,
-                Taglet.Location.TYPE, Location.METHOD);
+                Taglet.Location.TYPE, Location.METHOD, Location.CONSTRUCTOR);
     }
 
     @Override
@@ -133,6 +133,7 @@ public class PlantUml implements Taglet {
         String packageName = "";
         String elementType = element.getClass().getName();
         if (elementType.endsWith("Symbol$ClassSymbol")
+                || elementType.endsWith("Symbol$ConstructorSymbol")
                 || elementType.endsWith("Symbol$PackageSymbol")
                 || elementType.endsWith("Symbol$MethodSymbol")) {
             packageName = extractPackageName(element);
