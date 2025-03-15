@@ -29,6 +29,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.lang.model.element.*;
@@ -155,6 +156,8 @@ public class PlantUml implements Taglet {
             throw new IllegalArgumentException("taglet content: " + content);
         }
 
+        content = unescapeUnicode(content);
+
         if(urlMatcher.matcher(content).matches()){
             try (InputStream stream = new URI(content).toURL().openStream()){
                 if(stream==null){
@@ -245,5 +248,18 @@ public class PlantUml implements Taglet {
         }
 
         return plantConfigData;
+    }
+
+    private String unescapeUnicode(String input) {
+        Pattern pattern = Pattern.compile("\\\\u([0-9a-fA-F]{4})");
+        Matcher matcher = pattern.matcher(input);
+        StringBuilder buffer = new StringBuilder();
+        while (matcher.find()) {
+            String group = matcher.group(1);
+            char unicodeChar = (char) Integer.parseInt(group, 16);
+            matcher.appendReplacement(buffer, Matcher.quoteReplacement(String.valueOf(unicodeChar)));
+        }
+        matcher.appendTail(buffer);
+        return buffer.toString();
     }
 }
