@@ -195,7 +195,24 @@ public class PlantUml implements Taglet {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        return "<img src=\""+ fileName +"\"> ";
+
+        boolean diagramHiddenByDefault = Boolean.parseBoolean(
+                System.getProperty("diagram.hidden.by.default", "false"));
+        if(diagramHiddenByDefault){
+            Pattern titlePattern = Pattern.compile("(?i)^title\\s+(.+)$", Pattern.MULTILINE);
+            Matcher titleMatcher = titlePattern.matcher(plantUmlSource);
+            String linkText = "[Expand Diagram]";
+            if (titleMatcher.find()) {
+                linkText = titleMatcher.group(1).trim().replace("\"", "&quot;");
+            }
+            return "<a href=\"javascript:void(0)\" onclick=\""
+                    + "var div=this.nextElementSibling;"
+                    + "div.style.display=div.style.display==='none'?'block':'none';"
+                    + "\">" + linkText + "</a>"
+                    + "<div style=\"display:none;\"><img src=\"" + fileName + "\"></div>";
+        } else {
+            return "<img src=\""+ fileName +"\"> ";
+        }
     }
 
     private String extractPackageName(Element element) {

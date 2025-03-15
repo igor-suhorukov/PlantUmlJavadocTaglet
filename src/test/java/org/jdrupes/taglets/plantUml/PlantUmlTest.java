@@ -1,23 +1,22 @@
 package org.jdrupes.taglets.plantUml;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import com.sun.source.doctree.DocTree;
+import jdk.javadoc.doclet.DocletEnvironment;
+import org.junit.jupiter.api.Test;
 
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.util.Elements;
 import javax.tools.FileObject;
 import javax.tools.JavaFileManager;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 
-import jdk.javadoc.doclet.DocletEnvironment;
-import com.sun.source.doctree.DocTree;
-
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 public class PlantUmlTest {
     @Test
@@ -52,27 +51,55 @@ public class PlantUmlTest {
 
         DocTree docTree = mock(DocTree.class);
         when(docTree.toString()).thenReturn(
-                "@plantUml\n" +
-                        "database \"PostgreSQL 15+\"\n" +
-                        "node postgres_log_parser #palegreen\n" +
-                        "node \"OpenTelemetry collector\"\n" +
-                        "postgres_log_parser - \"PostgreSQL 15+\" : watch changes and parse JSON logs\n" +
-                        "postgres_log_parser -(0- \"OpenTelemetry collector\": \\u0434\\u0430 sending the logs"
+                """
+                        @plantUml
+                        title Project deployment diagram
+                        database "PostgreSQL 15+"
+                        node postgres_log_parser #palegreen
+                        node "OpenTelemetry collector"
+                        postgres_log_parser - "PostgreSQL 15+" : watch changes and parse JSON logs
+                        postgres_log_parser -(0- "OpenTelemetry collector": \\u0434\\u0430 sending the logs"""
         );
 
-        String result = plantUml.toString(List.of(docTree), mock(Element.class));
+        System.setProperty("diagram.hidden.by.default", "true");
 
+        assertWithExpandableDiagram(plantUml.toString(List.of(docTree), mock(Element.class)), mockStream);
+
+        System.setProperty("diagram.hidden.by.default", "false");
+
+        assertWithoutExpandableDiagramControl(plantUml.toString(List.of(docTree), mock(Element.class)));
+    }
+
+    private static void assertWithoutExpandableDiagramControl(String result) {
         assertAll(
                 () -> assertNotNull(result, "Should generate non-null output"),
                 () -> assertTrue(result.startsWith("<img src=\""),
                         "Should generate image tag"),
                 () -> assertTrue(result.contains(".svg\""),
-                        "Should reference SVG file")
+                        "Should reference SVG file"),
+                () -> assertFalse(result.contains("<div style=\"display:none;\"><img src=\""),
+                        "Image should remain hidden initially")
+        );
+    }
+
+    private static void assertWithExpandableDiagram(String result, ByteArrayOutputStream mockStream) {
+        assertAll(
+                () -> assertNotNull(result, "Should generate non-null output"),
+                () -> assertTrue(result.contains("<img src=\""),
+                        "Should generate image tag"),
+                () -> assertTrue(result.contains(".svg\""),
+                        "Should reference SVG file"),
+                () -> assertTrue(result.contains("Project deployment diagram</a>"),
+                        "Link should show diagram title"),
+                () -> assertTrue(result.contains("<div style=\"display:none;\"><img src=\""),
+                        "Image should remain hidden initially")
         );
 
         assertTrue(mockStream.size() > 0, "Should write to output stream");
         String svgContent = mockStream.toString(StandardCharsets.UTF_8);
         assertAll(
+                () -> assertTrue(svgContent.contains("Project deployment diagram"),
+                        "SVG should contain diagram title"),
                 () -> assertTrue(svgContent.contains("PostgreSQL 15+"),
                         "SVG should contain database label"),
                 () -> assertTrue(svgContent.contains("postgres_log_parser"),
